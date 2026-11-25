@@ -797,9 +797,11 @@ class IterativeProbe(Probe):
                     )
                 }
             elif isinstance(prompt, garak.attempt.Conversation):
-                notes = {"pre_translation_prompt": prompt}
-                for turn in prompt.turns:
+                # copy: the prompt itself is translated in place below
+                pre_translation_prompt = copy.deepcopy(prompt)
+                for turn in pre_translation_prompt.turns:
                     turn.content.lang = self.lang
+                notes = {"pre_translation_prompt": pre_translation_prompt}
 
         if isinstance(prompt, str):
             localized_prompt = self.langprovider.get_text([prompt])[

@@ -423,3 +423,51 @@ def test_probe_prompt_translation(classname, mocker):
         expected_provision_calls += len(probe_instance.attempt_descrs) * 2
 
     assert prompt_mock.call_count == expected_provision_calls
+
+
+@pytest.mark.parametrize("classname", ["probes.base.IterativeProbe"])
+def test_iterative_probe_keeps_pre_translation_conversation_prompt(classname, mocker):
+    """IterativeProbe must not translate the Conversation it stored as pre-translation.
+
+    _create_attempt() stored the caller's Conversation in notes and then translated
+    that same object in place, so notes["pre_translation_prompt"] carried the
+    translated turns tagged with the target language.
+    """
+
+    import garak.services.langservice
+    import garak.probes.base
+    from garak.langproviders.local import Passthru
+
+    null_provider = Passthru(
+        {
+            "langproviders": {
+                "local": {
+                    "language": "en,ja",
+                    # a differing source and target pair is what puts the probe in translated mode
+                }
+            }
+        }
+    )
+
+    mocker.patch.object(
+        garak.services.langservice, "get_langprovider", return_value=null_provider
+    )
+
+    class _Iterative(garak.probes.base.IterativeProbe):
+        lang = "en"
+        end_condition = "detector"
+
+    probe_instance = _Iterative()
+    original = Conversation(
+        [Turn("user", Message("original english prompt", lang="en"))]
+    )
+    attempt = probe_instance._create_attempt(original)
+
+    assert (
+        attempt.prompt.last_message().lang == "ja"
+    ), "the prompt sent to the target must carry the target language"
+    notes_prompt = attempt.notes.get("pre_translation_prompt")
+    assert notes_prompt is not attempt.prompt, "pre-translation prompt must be a copy"
+    assert [(turn.content.text, turn.content.lang) for turn in notes_prompt.turns] == [
+        ("original english prompt", "en")
+    ], "pre-translation prompt must keep the probe language"
