@@ -152,3 +152,31 @@ def test_litellm_suppressed_params():
         assert "frequency_penalty" in kwargs
         assert "presence_penalty" in kwargs
         assert "max_tokens" in kwargs
+
+
+@pytest.mark.skipif(
+    not all(
+        [importlib.util.find_spec(m) for m in LiteLLMGenerator.extra_dependency_names]
+    ),
+    reason="missing optional dependency",
+)
+@pytest.mark.parametrize(
+    "error_name", ["ContentPolicyViolationError", "ContextWindowExceededError"]
+)
+@pytest.mark.parametrize("generations", [1, 3])
+def test_litellm_prompt_rejection_returns_none(error_name, generations):
+    """A target refusing one prompt yields None outputs instead of ending the run."""
+    import litellm
+
+    error = getattr(litellm.exceptions, error_name)(
+        message="mock", model="gpt-4", llm_provider="azure"
+    )
+    with patch("litellm.completion", side_effect=error):
+        generator = LiteLLMGenerator(name="gpt-4")
+        output = generator.generate(
+            Conversation([Turn("user", Message("Test message"))]),
+            generations_this_call=generations,
+        )
+    assert (
+        output == [None] * generations
+    ), "rejected prompt should give one None per generation"

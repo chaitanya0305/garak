@@ -171,6 +171,13 @@ class LiteLLMGenerator(Generator):
 
             response = self.litellm.completion(**params)
         except (
+            self.litellm.exceptions.ContentPolicyViolationError,
+            self.litellm.exceptions.ContextWindowExceededError,
+        ) as e:
+            # the target rejected this prompt; skip it rather than end the run
+            logging.warning("LiteLLM target rejected prompt: %s", e)
+            return [None] * generations_this_call
+        except (
             self.litellm.exceptions.AuthenticationError,  # authentication failed for detected or passed `provider`
             self.litellm.exceptions.InternalServerError,  # can be raised when the detected provider is not configured
             self.litellm.exceptions.BadRequestError,
