@@ -222,3 +222,37 @@ def test_build_digest_records_live_cache_source_for_legacy_report(tmp_path):
     digest = report_digest.build_digest(str(report_path))
 
     assert digest["meta"]["plugin_cache_source"] == garak.__version__
+
+
+def test_build_digest_uses_header_cache_for_removed_probe_module(tmp_path):
+    _config.load_base_config()
+    _config.reporting.taxonomy = None
+    report_path = _write_report(
+        tmp_path,
+        plugin_cache={
+            "version": "test-cache-version",
+            "probes": {
+                "probes.removed_module.Gone": {
+                    "description": "Frozen probe description",
+                    "tags": [],
+                    "tier": 1,
+                }
+            },
+            "detectors": {
+                "detectors.always.Pass": {
+                    "description": "Frozen detector description",
+                }
+            },
+        },
+        eval_probe="removed_module.Gone",
+    )
+
+    digest = report_digest.build_digest(str(report_path))
+
+    probe_summary = digest["eval"]["removed_module"]["removed_module.Gone"]["_summary"]
+    assert (
+        probe_summary["probe_descr"] == "Frozen probe description"
+    ), "probe metadata should come from the report's plugin_cache snapshot"
+    assert (
+        digest["eval"]["removed_module"]["_summary"]["score"] == 1.0
+    ), "group score should be computed for a probe module absent from this install"

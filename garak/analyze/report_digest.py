@@ -296,11 +296,16 @@ def _get_group_info(probe_group, group_score, taxonomy, config=_config) -> dict:
     probe_group_name = probe_group
     if taxonomy is None:
         probe_module = re.sub("[^0-9A-Za-z_]", "", probe_group)
-        m = importlib.import_module(f"garak.probes.{probe_module}")
-        group_doc = markdown.markdown(plugin_docstring_to_description(m.__doc__))
-        group_link = (
-            f"https://reference.garak.ai/en/latest/garak.probes.{probe_group}.html"
-        )
+        try:
+            m = importlib.import_module(f"garak.probes.{probe_module}")
+        except ModuleNotFoundError:
+            # module absent from this install, e.g. renamed since the report was written
+            group_doc = f"Probes in module {probe_group}"
+        else:
+            group_doc = markdown.markdown(plugin_docstring_to_description(m.__doc__))
+            group_link = (
+                f"https://reference.garak.ai/en/latest/garak.probes.{probe_group}.html"
+            )
     elif probe_group != "other":
         probe_group_name = f"{taxonomy}:{probe_group}"
         if probe_group_name in tag_descriptions:
