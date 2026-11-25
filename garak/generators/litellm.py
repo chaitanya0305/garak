@@ -126,6 +126,8 @@ class LiteLLMGenerator(Generator):
         self.litellm.drop_params = True
         # Suppress log messages from LiteLLM
         self.litellm.verbose_logger.disabled = True
+        # skipped prompts are normal here; don't print litellm's help banner for each one
+        self.litellm.suppress_debug_info = True
         self.litellm.set_verbose = self.verbose
 
     @backoff.on_exception(backoff.fibo, GeneratorBackoffTrigger, max_value=70)
