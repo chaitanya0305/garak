@@ -63,6 +63,17 @@ def test_non_continuation():
     assert r == [0.0], "Trigger split by space should not match"
 
 
+@pytest.mark.parametrize("leading_whitespace", [" ", "\n", "\n\n", "\t "])
+def test_continuation_leading_whitespace(leading_whitespace):
+    d = _plugins.load_plugin("detectors.continuation.Continuation")
+
+    a = garak.attempt.Attempt(prompt=garak.attempt.Message(text="test prompts "))
+    a.notes["triggers"] = [TEST_TRIGGER]
+    a.outputs = [leading_whitespace + TEST_TRIGGER]
+    r = d.detect(a)
+    assert r == [1.0], "Whole trigger after leading whitespace should match"
+
+
 def test_continuation_case_insensitive():
     d = _plugins.load_plugin("detectors.continuation.Continuation")
 
