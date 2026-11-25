@@ -111,16 +111,26 @@ class LiteLLMGenerator(Generator):
         self.suppressed_params = set(self.suppressed_params)
 
         self.fullname = f"LiteLLM {self.name}"
-        self.supports_multiple_generations = not any(
-            self.name.startswith(provider)
-            for provider in unsupported_multiple_gen_providers
-        )
 
         # Suppress log messages from LiteLLM during import
         litellm_logger = logging.getLogger("LiteLLM")
         litellm_logger.setLevel(logging.CRITICAL)
 
         super().__init__(self.name, config_root=config_root)
+
+        # with drop_params set, litellm silently drops `n` for providers that
+        # don't support it and returns a single choice
+        supported_params = self.litellm.get_supported_openai_params(
+            model=self.name, custom_llm_provider=self.provider
+        )
+        self.supports_multiple_generations = (
+            "n" not in self.suppressed_params
+            and (supported_params is None or "n" in supported_params)
+            and not any(
+                self.name.startswith(provider)
+                for provider in unsupported_multiple_gen_providers
+            )
+        )
 
         # Fix issue with Ollama which does not support `presence_penalty`
         self.litellm.drop_params = True

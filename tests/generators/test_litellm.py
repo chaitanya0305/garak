@@ -152,3 +152,49 @@ def test_litellm_suppressed_params():
         assert "frequency_penalty" in kwargs
         assert "presence_penalty" in kwargs
         assert "max_tokens" in kwargs
+
+
+@pytest.mark.skipif(
+    not all(
+        [importlib.util.find_spec(m) for m in LiteLLMGenerator.extra_dependency_names]
+    ),
+    reason="missing optional dependency",
+)
+@pytest.mark.parametrize(
+    "target_name",
+    [
+        "anthropic/claude-3-5-sonnet-20240620",
+        "ollama/llama3",
+        "ollama_chat/llama3",
+        "mistral/mistral-large-latest",
+    ],
+)
+def test_litellm_provider_without_n_generates_one_at_a_time(target_name):
+    """litellm drops `n` for providers that don't support it, so each generation needs its own call."""
+    mock_response = type(
+        "obj",
+        (object,),
+        {
+            "choices": [
+                type(
+                    "obj",
+                    (object,),
+                    {"message": type("obj", (object,), {"content": "Mock response"})},
+                )
+            ]
+        },
+    )
+    with patch("litellm.completion", return_value=mock_response) as mock_completion:
+        generator = LiteLLMGenerator(name=target_name)
+        output = generator.generate(
+            Conversation([Turn("user", Message("Test message"))]),
+            generations_this_call=3,
+        )
+    assert (
+        output == [Message("Mock response")] * 3
+    ), "expected one output per generation"
+    assert mock_completion.call_count == 3, "expected one request per generation"
+    for _, kwargs in mock_completion.call_args_list:
+        assert (
+            kwargs["n"] == 1
+        ), "provider without `n` support should be asked for one completion"
