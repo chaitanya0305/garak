@@ -57,6 +57,9 @@ def main(arguments=None) -> None:
 
     log_filename = command.start_logging()
     _config.load_base_config()
+    # plugins loaded by an earlier run in this process were configured for
+    # that run (target, generations, options); load fresh ones for this run
+    _plugins.PluginProvider.clear()
 
     print(
         f"garak {__description__} v{_config.version} ( https://github.com/NVIDIA/garak ) at {_config.transient.starttime_iso}"

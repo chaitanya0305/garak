@@ -73,6 +73,9 @@ def start_run():
     else:
         filename = _config.reporting.report_prefix + ".report.jsonl"
     _config.transient.report_filename = str(report_path / filename)
+    # the hitlog is opened lazily on the first hit; drop any handle left by an
+    # earlier run so this run's hitlog is started fresh like its report
+    _config.transient.hitlogfile = None
     _config.transient.reportfile = open(
         _config.transient.report_filename, "w", buffering=1, encoding="utf-8"
     )

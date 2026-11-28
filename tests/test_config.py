@@ -1387,3 +1387,23 @@ def test_core_config_not_duplicated_in_config_files():
         f"after load_base_config() + load_config(); expected exactly 1. "
         f"See https://github.com/NVIDIA/garak/issues/1249"
     )
+
+
+def test_second_cli_run_starts_from_base_config():
+    """Values given on one run's command line must not carry into a later run
+    in the same process; each run starts again from garak.core.yaml."""
+    garak.cli.main(["--generations", "3", "--parallel_attempts", "2", "--list_config"])
+    assert _config.run.generations == 3
+    assert _config.system.parallel_attempts == 2
+
+    garak.cli.main(["--list_config"])
+    assert _config.run.generations == 5
+    assert _config.system.parallel_attempts is False
+
+
+def test_second_cli_run_drops_previous_spec():
+    garak.cli.main(["--spec", "probes.test.Test", "--list_config"])
+    assert _config.run.spec is not None
+
+    garak.cli.main(["--list_config"])
+    assert _config.run.spec is None

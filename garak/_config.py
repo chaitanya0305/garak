@@ -84,11 +84,6 @@ class TransientConfig(GarakSubConfig):
 
 transient = TransientConfig()
 
-system = GarakSubConfig()
-run = GarakSubConfig()
-plugins = GarakSubConfig()
-reporting = GarakSubConfig()
-
 
 def _lock_config_as_dict():
     global plugins
@@ -109,23 +104,36 @@ def _nested_dict():
 
 nested_dict = _nested_dict
 
-plugins.probes = nested_dict()
-plugins.generators = nested_dict()
-plugins.detectors = nested_dict()
-plugins.buffs = nested_dict()
-plugins.harnesses = nested_dict()
-reporting.taxonomy = None  # set here to enable report_digest to be called directly
+
+def _reset_settings() -> None:
+    """Set system/run/plugins/reporting back to their pre-load defaults"""
+    global system, run, plugins, reporting, config_files
+
+    system = GarakSubConfig()
+    run = GarakSubConfig()
+    plugins = GarakSubConfig()
+    reporting = GarakSubConfig()
+
+    plugins.probes = nested_dict()
+    plugins.generators = nested_dict()
+    plugins.detectors = nested_dict()
+    plugins.buffs = nested_dict()
+    plugins.harnesses = nested_dict()
+    reporting.taxonomy = None  # set here to enable report_digest to be called directly
+
+    config_files = []
+
+    # this is so popular, let's set a default. what other defaults are worth setting? what's the policy?
+    run.seed = None
+    run.soft_probe_prompt_cap = 64
+    run.target_lang = "en"
+    run.langproviders = []
+    run.spec = None  # unified selection spec; None -> implicit probes.* at resolve time
+
+
+_reset_settings()
 
 buffmanager = BuffManager()
-
-config_files = []
-
-# this is so popular, let's set a default. what other defaults are worth setting? what's the policy?
-run.seed = None
-run.soft_probe_prompt_cap = 64
-run.target_lang = "en"
-run.langproviders = []
-run.spec = None  # unified selection spec; None -> implicit probes.* at resolve time
 
 # placeholder
 # generator, probe, detector, buff = {}, {}, {}, {}
@@ -345,6 +353,9 @@ def get_http_lib_agents():
 
 def load_base_config() -> None:
     global is_loaded
+    # start from defaults, so values from an earlier run in this process
+    # (e.g. a previous garak.cli.main() call) don't carry over
+    _reset_settings()
     settings_files = [str(transient.package_dir / "resources" / "garak.core.yaml")]
     logging.debug("Loading configs from: %s", ",".join(settings_files))
     _store_config(settings_files=settings_files)

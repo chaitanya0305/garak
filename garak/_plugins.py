@@ -381,6 +381,12 @@ class PluginProvider:
             PluginProvider._instance_cache[plugin.__class__] = klass_instances
         klass_instances[str(config_root)] = plugin
 
+    @staticmethod
+    def clear():
+        """Drop all stored instances, e.g. when a new run starts"""
+        with PluginProvider._mutex:
+            PluginProvider._instance_cache.clear()
+
 
 def plugin_info(plugin: Union[Callable, str]) -> dict:
     return PluginCache.plugin_info(plugin)
